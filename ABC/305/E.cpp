@@ -2,11 +2,11 @@
 using namespace std;
 typedef long long ll;
 typedef long double ld;
-#define rep(i,n) for(int i = 0; i < n; i++)
-#define rep_s(i,s,n) for(int i = s; i < n; i++)
-#define rep_r(i,n) for(int i = n-1; i >= 0; i--)
-#define rep_rs(i,s,e) for(int i = s-1; i >= e; i--)
-#define rep_b(bit,n) for (int bit = 0; bit < (1<<n); bit++)
+#define rep(i,n) for(ll i = 0; i < n; i++)
+#define rep_s(i,s,n) for(ll i = s; i < n; i++)
+#define rep_r(i,n) for(ll i = n-1; i >= 0; i--)
+#define rep_rs(i,s,e) for(ll i = s-1; i >= e; i--)
+#define rep_b(bit,n) for (ll bit = 0; bit < (1<<n); bit++)
 #define enum_bit() if(bit & (1<<i))
 #define all(a) a.begin(),a.end()
 #define sz(v) ((ll)v.size())
@@ -29,45 +29,76 @@ void fast(){
 }
  
 #define endl "\n" //flushのとき外す
- 
-//問題文：https://atcoder.jp/contests/abc310/tasks/abc310_e
+
+//問題文：https://atcoder.jp/contests/abc305/tasks/abc305_e
 /*
 解答方針
-愚直な解法だとO(N^2)となりTLEするため、O(N)あるいはO(NlogN)で解く必要がある。
-ここではO(N)の動的計画法で解く。
-要素は0か1のどちらかしかありえないため、以下のようにDPを考えた。
-また、文字列sの中身はchar型であるため、実装上ではbool型に直した配列s_bをつくっている（この説明ではsとする）。
-dp[i][j]：i番目における要素jの個数
-dp[i][s[i]]を1、その他を0で初期化し（本コード中では遷移中に行っているが）、以下のように遷移する。
-なお、"!(0&s[i+1])"の部分がNANDである。
-dp[i+1][!(0&s[i+1])] += dp[i][0]
-dp[i+1][!(1&s[i+1])] += dp[i][1]
-
-最終の答えは0 <= i < nにおけるdp[i][1]の総和である。
+「その点にいる警備員の最大体力」を考えてなにかできそう。
+この問題の場合、始点を1点ではなく、多点にしてスタートするいわゆる拡張ダイクストラで解ける。
+体力の小さい順から埋めていったほうが効率がよい（大きい順だとqueueの要素数が爆発的に増加するため）
 */
 
+bool comp(pair<int,int> p1, pair<int,int> p2){
+  return p1.second > p2.second;
+}
+ 
 int main(){
-  int n;
-  cin >> n;
-  string s;
-  cin >> s;
-  vector<bool> s_b(n);
-  rep(i,n){
-    s_b[i] = s[i]-'0';
+  fast();
+  int n,m,k;
+  cin >> n >> m >> k;
+  vector<int> a(m), b(m);
+  rep(i,m){
+    cin >> a[i] >> b[i];
+    a[i]--;b[i]--;
   }
-  vector<vector<int>> dp(n,vector<int>(2,0));
-  dp[0][s_b[0]]++;
-  rep(i,n-1){
-    dp[i+1][s_b[i+1]]++;
-    dp[i+1][!(0&s_b[i+1])] += dp[i][0];
-    dp[i+1][!(1&s_b[i+1])] += dp[i][1];
+  vector<pair<int,int>> ph(k);
+  rep(i,k){
+    cin >> ph[i].first >> ph[i].second;
+    ph[i].first--;
   }
-  /*rep(i,n){
-    cout << dp[i][0] << " " << dp[i][1] << endl;
-  }*/
-  ll ans = 0;
+  sort(all(ph), comp); //体力の多い順に取り出す
+  vector<vector<int>> g(n);
+  rep(i,m){
+    g[a[i]].push_back(b[i]);
+    g[b[i]].push_back(a[i]);
+  }
+  vector<int> maxhealth(n,-1);
+  rep(i,k){
+    maxhealth[ph[i].first] = ph[i].second; //ある点における警官の最大体力
+  }
+  //体力が小さい順に取り出したほうがよい…？ダイクストラっぽく解く感じ…？
+  priority_queue<pair<int,int>> dijkstra;
+  //最初に頂点pを全部入れていけば大丈夫そう？
+  rep(i,k){
+    dijkstra.push(make_pair(ph[i].second, ph[i].first));
+  }
+  while(!dijkstra.empty()){
+    pair<int,int> elem = dijkstra.top();
+    dijkstra.pop();
+    int node = elem.second;
+    int hp = elem.first;
+    if(hp == 0){
+      continue;
+    }
+    for(auto j: g[node]){
+      if(maxhealth[j] >= hp-1){
+        continue;
+      }
+      maxhealth[j] = hp-1;
+      dijkstra.push(make_pair(hp-1, j));
+    }
+  }
+  int ans = 0;
   rep(i,n){
-    ans += dp[i][1];
+    if(maxhealth[i] != -1){
+      ans++;
+    }
   }
   cout << ans << endl;
+  rep(i,n){
+    if(maxhealth[i] != -1){
+      cout << i+1 << " ";
+    }
+  }
+  cout << endl;
 }
